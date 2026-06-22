@@ -62,7 +62,7 @@ def home(request: Request):
 
 @app.get("/onboarding", response_class=HTMLResponse)
 def onboarding_page(request: Request):
-    return templates.TemplateResponse("onboarding.html", {"request": request})
+    return templates.TemplateResponse(request, "onboarding.html")
 
 
 @app.post("/onboarding")
@@ -86,7 +86,7 @@ def tutor_page(request: Request):
     sid = _sid(request)
     if not sid or not db.get_profile(sid):
         return RedirectResponse("/onboarding", status_code=303)
-    return templates.TemplateResponse("tutor.html", {"request": request})
+    return templates.TemplateResponse(request, "tutor.html")
 
 
 @app.post("/api/tutor")
