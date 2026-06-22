@@ -14,6 +14,7 @@ import psycopg
 
 from prompts import CONFIDENCES, PACES, STYLES
 
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS profiles (
     sid         TEXT PRIMARY KEY,
