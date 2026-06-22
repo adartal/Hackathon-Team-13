@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Hintly — Homework Helper" },
       { name: "description", content: "Snap your math homework, get guided AI tutoring." },
-      { property: "og:title", content: "Hintly — Homework Helper" },
+      { property: "og:title", content: "Hintlyy — Homework Helper" },
       { property: "og:description", content: "Snap your math homework, get guided AI tutoring." },
     ],
   }),
