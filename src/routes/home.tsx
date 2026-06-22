@@ -144,7 +144,7 @@ function EmptyState() {
 
 export function HomeworkCard({ hw }: { hw: Homework }) {
   return (
-    <HomeworkTile to="/review/$id" params={{ id: hw.id }}>
+    <HomeworkTile to="/review/$id" params={{ id: hw.id } as never}>
       {hw.coverImage ? (
         <TileImage src={hw.coverImage} alt={hw.title} />
       ) : (
