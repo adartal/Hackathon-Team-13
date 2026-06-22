@@ -7,7 +7,7 @@ import { PageRoot, Container, Brand, LogoMark, FormCard, Hint } from "./index.st
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "MathPal — Homework Helper" },
+      { title: "Hintly — Homework Helper" },
       { name: "description", content: "Snap your math homework, get guided AI tutoring." },
       { property: "og:title", content: "MathPal — Homework Helper" },
       { property: "og:description", content: "Snap your math homework, get guided AI tutoring." },
