@@ -9,6 +9,41 @@ class ConversationSummary(BaseModel):
     id: str
     name: str
     cover_image_url: str | None = None
+    assigned_by: str | None = None  # teacher_id when teacher-assigned
+
+
+class AssignQuestionResponse(BaseModel):
+    conversation_id: str
+    problem: str
+
+
+class GenerateQuestionRequest(BaseModel):
+    prompt: str
+
+
+class GenerateQuestionResponse(BaseModel):
+    problem: str
+
+
+class AssignRequest(BaseModel):
+    problem: str
+    name: str = "שאלה ממורה"
+
+
+class BulkAssignRequest(BaseModel):
+    problem: str
+    student_ids: list[str]
+    name: str = "שאלה ממורה"
+
+
+class BulkAssignResult(BaseModel):
+    student_id: str
+    conversation_id: str
+
+
+class BulkAssignResponse(BaseModel):
+    problem: str
+    results: list[BulkAssignResult]
 
 
 class CreateConversationRequest(BaseModel):

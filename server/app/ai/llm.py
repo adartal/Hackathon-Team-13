@@ -102,14 +102,43 @@ def generate_practice(concept_he: str, difficulty: str, grade: int = 8) -> str:
     resp = _get_client().models.generate_content(
         model=MODEL,
         contents=[
-            "Answer in Hebrew. Write ONE short math practice problem for an "
-            f"Israeli middle-school student in grade {grade} on the topic "
-            f"'{concept_he}'. It MUST match a grade-{grade} curriculum level — not "
-            "harder than middle-school, not trivial. Difficulty within that level: "
-            f"{difficulty} (easier/same/harder than typical for the grade). Give "
-            "only the problem statement, no solution."
+            "You are a math teacher writing a practice problem for an Israeli middle-school student. "
+            f"Topic: '{concept_he}', grade: {grade}, "
+            f"difficulty: {difficulty} (easier/same/harder than typical for the grade).\n\n"
+            "Write ONE short, self-contained practice problem in Hebrew.\n\n"
+            "FORMATTING RULES — follow exactly:\n"
+            "- Write the prose in Hebrew (right-to-left text).\n"
+            "- For ALL mathematical expressions use LaTeX wrapped in single dollar signs: $expression$\n"
+            "  Examples: $x^2$, $\\frac{1}{2}$, $\\sqrt{16}$, $\\parallel$, $\\perp$, $3 \\cdot x$\n"
+            "- Never use Unicode math characters like ², ½, √, ‖ — always use LaTeX $...$\n"
+            "- Do NOT add a title, solution, or explanation — only the problem statement."
         ],
-        config=types.GenerateContentConfig(max_output_tokens=120),
+        config=types.GenerateContentConfig(max_output_tokens=150),
+    )
+    return (resp.text or "").strip()
+
+
+def generate_from_prompt(teacher_prompt: str) -> str:
+    """Generate a Hebrew math question from a free-form teacher prompt.
+
+    Unlike generate_practice (which needs a concept + difficulty), this accepts
+    any descriptive text the teacher types (e.g. "easy fractions", "word problem
+    with percentages for grade 6") and returns a single problem statement.
+    """
+    resp = _get_client().models.generate_content(
+        model=MODEL,
+        contents=[
+            "You are a math teacher writing a problem for an Israeli middle-school student. "
+            f"Teacher's request: '{teacher_prompt}'. "
+            "Write ONE clear, self-contained math problem statement in Hebrew that matches the request.\n\n"
+            "FORMATTING RULES — follow exactly:\n"
+            "- Write the prose in Hebrew (right-to-left text).\n"
+            "- For ALL mathematical expressions use LaTeX wrapped in single dollar signs: $expression$\n"
+            "  Examples: $x^2$, $\\frac{1}{2}$, $\\sqrt{16}$, $\\parallel$, $\\perp$, $\\cdot$\n"
+            "- Never use Unicode math characters like ², ½, √, ‖ — always use LaTeX $...$\n"
+            "- Do NOT add a title, solution, or explanation — only the problem statement."
+        ],
+        config=types.GenerateContentConfig(max_output_tokens=200),
     )
     return (resp.text or "").strip()
 
