@@ -1,5 +1,5 @@
 import { styled } from "@mui/material/styles";
-import { Box, Paper, Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 export const PageRoot = styled(Box)(({ theme }) => ({
   minHeight: "100vh",
@@ -36,7 +36,8 @@ export const LogoMark = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-export const FormCard = styled(Paper)(({ theme }) => ({
+export const FormCard = styled("form")(({ theme }) => ({
+  backgroundColor: theme.palette.background.paper,
   borderRadius: 24,
   padding: theme.spacing(3),
   display: "flex",
