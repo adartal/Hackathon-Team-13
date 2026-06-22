@@ -92,6 +92,28 @@ def tutor(system: str, context: str) -> str:
     return (resp.text or "").strip()
 
 
+def generate_practice(concept_he: str, difficulty: str, grade: int = 8) -> str:
+    """On-demand: invent one fresh practice problem for a concept + difficulty.
+
+    Grade-aligned so the problem stays at the student's middle-school level.
+    Deliberately OFF the per-turn path — only the practice endpoints call this
+    when explicitly asked, so per-turn LLM cost stays unchanged.
+    """
+    resp = _get_client().models.generate_content(
+        model=MODEL,
+        contents=[
+            "Answer in Hebrew. Write ONE short math practice problem for an "
+            f"Israeli middle-school student in grade {grade} on the topic "
+            f"'{concept_he}'. It MUST match a grade-{grade} curriculum level — not "
+            "harder than middle-school, not trivial. Difficulty within that level: "
+            f"{difficulty} (easier/same/harder than typical for the grade). Give "
+            "only the problem statement, no solution."
+        ],
+        config=types.GenerateContentConfig(max_output_tokens=120),
+    )
+    return (resp.text or "").strip()
+
+
 def summarize(prev_summary: str, latest_exchange: str) -> str:
     """Compact the running conversation memory after each turn (context.json)."""
     resp = _get_client().models.generate_content(

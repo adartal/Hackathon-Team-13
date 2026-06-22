@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from app.ai import taxonomy
+
 # Hard ceiling for the tutor system prompt. Target is ~600 chars; we assert a
 # little above that so a normal profile never trips it but runaway growth does.
 SYSTEM_PROMPT_BUDGET = 700
@@ -82,7 +84,9 @@ ANALYSIS_PROMPT = (
     "correct; if not, name the single underlying mistake. Add a one-line "
     "observation of what the student actually did (right or wrong). Set confidence "
     "honestly: if the photo is unreadable or you are unsure, use a low value. "
-    "Respond as JSON matching the schema."
+    "For 'concept', choose the closest tag from this list: "
+    + ", ".join(taxonomy.candidate_ids())
+    + ". Respond as JSON matching the schema."
 )
 
 
@@ -110,7 +114,9 @@ PLAN_PROMPT = (
     "move to help them fix it. If it's right: set misconception to 'none' and make "
     "the next move to affirm specifically and ask what they'd like to do next. "
     "Always note what you must NOT reveal (never the final answer) and one short "
-    "question to ask the student. Respond as JSON matching the schema."
+    "question to ask the student. Also read the student's emotional state from "
+    "their message and set student_affect to 'frustrated', 'neutral', or "
+    "'confident'. Respond as JSON matching the schema."
 )
 
 

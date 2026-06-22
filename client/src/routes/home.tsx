@@ -1,11 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Button, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, MenuItem, Paper, TextField, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import BookIcon from "@mui/icons-material/MenuBook";
 import HistoryIcon from "@mui/icons-material/History";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import { listHomeworks, getUser, type Homework } from "@/lib/api";
+import LightbulbIcon from "@mui/icons-material/EmojiObjects";
+import {
+  getNextStep,
+  startPractice,
+  listConcepts,
+  listHomeworks,
+  getUser,
+  type Homework,
+  type NextStep,
+  type ConceptOption,
+} from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import {
   PageRoot,
@@ -79,6 +89,8 @@ function HomePage() {
           </QuickSecondary>
         </QuickGrid>
 
+        <PracticeNext />
+
         <section>
           <SectionHead>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -109,6 +121,94 @@ function HomePage() {
         </section>
       </Main>
     </PageRoot>
+  );
+}
+
+// Proactive practice launcher. Suggests a subject from the student's mastery
+// profile but lets them pick any subject, then opens a fresh conversation seeded
+// with a grade-aligned generated problem.
+function PracticeNext() {
+  const navigate = useNavigate();
+  const [next, setNext] = useState<NextStep | null>(null);
+  const [concepts, setConcepts] = useState<ConceptOption[]>([]);
+  const [picked, setPicked] = useState<string>("");
+  const [starting, setStarting] = useState(false);
+
+  useEffect(() => {
+    // Load the subject catalog and the suggestion together; default the picker
+    // to the suggestion (else the first grade-appropriate subject).
+    Promise.all([listConcepts(), getNextStep().catch(() => null)]).then(([opts, rec]) => {
+      setConcepts(opts);
+      setNext(rec);
+      setPicked(rec?.concept ?? opts[0]?.concept ?? "");
+    });
+  }, []);
+
+  if (concepts.length === 0) return null;
+
+  const difficultyLabel =
+    next?.difficulty === "harder" ? "Level up" : next?.difficulty === "easier" ? "Build the basics" : "Keep going";
+
+  async function start() {
+    if (!picked) return;
+    setStarting(true);
+    try {
+      // Backend generates a problem and opens a new conversation; jump into it.
+      const session = await startPractice(picked);
+      navigate({ to: "/review/$id", params: { id: session.conversation_id } });
+    } catch {
+      setStarting(false); // stay on the page if it failed
+    }
+  }
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2,
+        mb: 1,
+        borderRadius: 3,
+        border: "1px solid",
+        borderColor: "divider",
+        background: "linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.08))",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+        <LightbulbIcon color="primary" fontSize="small" />
+        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+          Practice next
+        </Typography>
+        {next ? (
+          <Chip size="small" label={difficultyLabel} color="primary" variant="outlined" sx={{ ml: "auto" }} />
+        ) : null}
+      </Box>
+
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+        <TextField
+          select
+          size="small"
+          label="Subject"
+          value={picked}
+          onChange={(e) => setPicked(e.target.value)}
+          sx={{ minWidth: 200, "& .MuiInputBase-input": { direction: "rtl", textAlign: "right" } }}
+        >
+          {concepts.map((c) => (
+            <MenuItem key={c.concept} value={c.concept} sx={{ direction: "rtl", justifyContent: "flex-end" }}>
+              {c.he_name}
+              {next?.concept === c.concept ? " ⭐" : ""}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Button
+          variant="contained"
+          onClick={start}
+          disabled={starting || !picked}
+          startIcon={starting ? <CircularProgress size={14} color="inherit" /> : undefined}
+        >
+          {starting ? "Starting…" : "Start practice"}
+        </Button>
+      </Box>
+    </Paper>
   );
 }
 
