@@ -54,7 +54,7 @@ function HomePage() {
   return (
     <PageRoot>
       <AppHeader title="MathPal" showLogout />
-      <Main component="main">
+      <Main>
         <Greeting>
           <Typography variant="body2" color="text.secondary">
             Hi {user?.name ?? "there"} 👋
