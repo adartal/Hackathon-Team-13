@@ -1,0 +1,29 @@
+name: CI
+
+# Test gate. Vercel's Git integration handles the actual build + deploy; this
+# just runs fast checks on pull requests and pushes so broken code is caught
+# before it ships.
+on:
+  push:
+    branches: [main, AI-engine]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Byte-compile all modules
+        run: python -m py_compile api/index.py llm.py prompts.py mastery.py db.py
+
+      - name: Smoke tests (bounded prompt + mastery rules)
+        run: python tests/test_smoke.py

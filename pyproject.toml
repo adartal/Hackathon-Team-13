@@ -1,0 +1,6 @@
+# Vercel detects this FastAPI app via the entrypoint below, so api/index.py can
+# stay where it is (no need to move the app to a root main.py). If Vercel ever
+# fails to detect it, the fallback is to expose `app` from a root-level
+# main.py / index.py instead.
+[tool.vercel]
+entrypoint = "api.index:app"

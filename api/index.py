@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 # Repo root holds the shared modules + templates/static; make them importable
@@ -29,7 +30,18 @@ import llm  # noqa: E402
 import mastery  # noqa: E402
 from prompts import build_tutor_system  # noqa: E402
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Create tables on boot so a request with a stale cookie can't hit a
+    # missing table on a fresh database. Don't crash boot if the DB is cold.
+    try:
+        db.init_db()
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 templates = Jinja2Templates(directory=ROOT / "templates")
 
