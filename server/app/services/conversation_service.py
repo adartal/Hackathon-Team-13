@@ -43,12 +43,15 @@ class ConversationService:
         return list(await asyncio.gather(*tasks))
 
     async def create_conversation(
-        self, student_id: str, name: str
+        self, student_id: str, name: str, assigned_by: str | None = None
     ) -> ConversationSummary:
         conversation_id = str(uuid.uuid4())
         key = meta_key(student_id, conversation_id)
-        await self._s3.put_object_json(self._bucket, key, {"name": name})
-        return ConversationSummary(id=conversation_id, name=name)
+        meta: dict[str, Any] = {"name": name}
+        if assigned_by:
+            meta["assigned_by"] = assigned_by
+        await self._s3.put_object_json(self._bucket, key, meta)
+        return ConversationSummary(id=conversation_id, name=name, assigned_by=assigned_by)
 
     async def get_history(
         self, student_id: str, conversation_id: str
@@ -149,7 +152,12 @@ class ConversationService:
         first_image_key = meta.get("first_image_key")
         if first_image_key:
             cover_url = await self._s3.generate_presigned_url(self._bucket, first_image_key)
-        return ConversationSummary(id=conversation_id, name=name, cover_image_url=cover_url)
+        return ConversationSummary(
+            id=conversation_id,
+            name=name,
+            cover_image_url=cover_url,
+            assigned_by=meta.get("assigned_by"),
+        )
 
     async def _fetch_conversation_name(
         self, student_id: str, conversation_id: str, fallback: str

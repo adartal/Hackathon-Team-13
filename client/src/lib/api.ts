@@ -24,6 +24,7 @@ export interface Homework {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+  assignedBy?: string;
 }
 
 export interface User {
@@ -109,11 +110,52 @@ export async function removeStudentFromTeacher(
   return data;
 }
 
+export async function generateQuestion(
+  teacherId: string,
+  prompt: string,
+): Promise<string> {
+  const { data } = await api.post<{ problem: string }>(`/teachers/${teacherId}/generate-question`, { prompt });
+  return data.problem;
+}
+
+export async function assignQuestion(
+  teacherId: string,
+  studentId: string,
+  problem: string,
+  name?: string,
+): Promise<{ conversation_id: string; problem: string }> {
+  const { data } = await api.post(`/teachers/${teacherId}/students/${studentId}/assign`, {
+    problem,
+    ...(name ? { name } : {}),
+  });
+  return data;
+}
+
+export interface BulkAssignResult {
+  student_id: string;
+  conversation_id: string;
+}
+
+export async function assignBulk(
+  teacherId: string,
+  studentIds: string[],
+  problem: string,
+  name?: string,
+): Promise<{ problem: string; results: BulkAssignResult[] }> {
+  const { data } = await api.post(`/teachers/${teacherId}/assign-bulk`, {
+    problem,
+    student_ids: studentIds,
+    ...(name ? { name } : {}),
+  });
+  return data;
+}
+
 // ---------- backend payload shapes ----------
 interface ConversationSummary {
   id: string;
   name: string;
   cover_image_url?: string | null;
+  assigned_by?: string | null;
 }
 interface AiFeedback {
   reply?: string;
@@ -280,6 +322,7 @@ export async function listHomeworks(): Promise<Homework[]> {
     messages: [],
     createdAt: 0,
     updatedAt: 0,
+    assignedBy: c.assigned_by ?? undefined,
   }));
 }
 

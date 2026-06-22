@@ -121,6 +121,15 @@ export const TileGradient = styled(Box)(({ theme }) => ({
   background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.2)}, ${alpha(theme.palette.success.main, 0.3)})`,
 }));
 
+export const TileAssignedBg = styled(Box)(({ theme }) => ({
+  position: "absolute",
+  inset: 0,
+  background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+}));
+
 export const TileShade = styled(Box)({
   position: "absolute",
   inset: 0,

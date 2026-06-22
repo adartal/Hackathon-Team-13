@@ -83,6 +83,9 @@ export const Bubble = styled(Box, {
   border: isStudent ? "none" : `1px solid ${theme.palette.divider}`,
   direction: isStudent ? "ltr" : "rtl",
   textAlign: isStudent ? "left" : "right",
+  "& .katex": {
+    unicodeBidi: "isolate",
+  },
 }));
 
 export const TypingBubbleEl = styled(Box)(({ theme }) => ({

@@ -15,6 +15,7 @@ import BookIcon from "@mui/icons-material/MenuBook";
 import HistoryIcon from "@mui/icons-material/History";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import LightbulbIcon from "@mui/icons-material/EmojiObjects";
+import SchoolIcon from "@mui/icons-material/School";
 import {
   getNextStep,
   startPractice,
@@ -42,6 +43,7 @@ import {
   HomeworkTile,
   TileImage,
   TileGradient,
+  TileAssignedBg,
   TileShade,
   TileMeta,
   TileStatusRow,
@@ -69,7 +71,8 @@ function HomePage() {
     listHomeworks().then(setHomeworks);
   }, [navigate]);
 
-  const recent = homeworks?.slice(0, 6) ?? [];
+  const assigned = homeworks?.filter((hw) => hw.assignedBy) ?? [];
+  const recent = homeworks?.filter((hw) => !hw.assignedBy).slice(0, 6) ?? [];
 
   return (
     <PageRoot>
@@ -99,6 +102,21 @@ function HomePage() {
         </QuickGrid>
 
         <PracticeNext />
+
+        {assigned.length > 0 && (
+          <section>
+            <SectionHead>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                Assigned to you
+              </Typography>
+            </SectionHead>
+            <Grid2>
+              {assigned.map((hw) => (
+                <HomeworkCard key={hw.id} hw={hw} />
+              ))}
+            </Grid2>
+          </section>
+        )}
 
         <section>
           <SectionHead>
@@ -254,8 +272,28 @@ function EmptyState() {
 export function HomeworkCard({ hw }: { hw: Homework }) {
   return (
     <HomeworkTile to="/review/$id" params={{ id: hw.id } as never}>
-      {hw.coverImage ? <TileImage src={hw.coverImage} alt={hw.title} /> : <TileGradient />}
+      {hw.coverImage
+        ? <TileImage src={hw.coverImage} alt={hw.title} />
+        : hw.assignedBy
+          ? <TileAssignedBg><SchoolIcon sx={{ fontSize: 56, color: "rgba(255,255,255,0.35)" }} /></TileAssignedBg>
+          : <TileGradient />}
       <TileShade />
+      {hw.assignedBy && (
+        <Chip
+          label="Assigned"
+          size="small"
+          sx={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            fontWeight: 700,
+            fontSize: "0.65rem",
+            height: 20,
+          }}
+        />
+      )}
       <TileMeta>
         <TileStatusRow>
           <StatusDotEl status={hw.status} />
