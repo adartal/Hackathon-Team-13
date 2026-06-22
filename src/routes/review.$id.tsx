@@ -1,6 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Camera, Send, Sparkles } from "lucide-react";
+import { IconButton } from "@mui/material";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import SendIcon from "@mui/icons-material/Send";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import {
   appendMessage,
   getHomework,
@@ -9,9 +13,29 @@ import {
   type ChatMessage,
 } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { filesToDataUrls } from "@/lib/file-utils";
+import {
+  PageRoot,
+  ScrollArea,
+  ScrollInner,
+  InfoBanner,
+  Row,
+  BubbleStack,
+  ImageGrid,
+  BubbleImage,
+  Bubble,
+  TypingBubbleEl,
+  Composer,
+  ComposerInner,
+  PendingStrip,
+  PendingThumb,
+  PendingImg,
+  PendingRemove,
+  ComposerRow,
+  IconBtn,
+  MessageField,
+  HiddenInput,
+} from "./review.$id.style";
 
 export const Route = createFileRoute("/review/$id")({
   head: () => ({ meta: [{ title: "Review — MathPal" }] }),
@@ -84,71 +108,60 @@ function ReviewPage() {
 
   if (!hw) {
     return (
-      <div className="min-h-screen">
+      <PageRoot>
         <AppHeader title="Loading…" back="/home" />
-      </div>
+      </PageRoot>
     );
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col">
+    <PageRoot>
       <AppHeader title={hw.title} back="/home" />
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-          <div className="bg-accent/40 border border-accent rounded-2xl p-3 flex gap-2 items-start">
-            <Sparkles className="h-4 w-4 text-accent-foreground mt-0.5 shrink-0" />
-            <p className="text-xs text-accent-foreground">
+      <ScrollArea ref={scrollRef}>
+        <ScrollInner>
+          <InfoBanner>
+            <AutoAwesomeIcon sx={{ fontSize: 16, mt: "2px", flexShrink: 0 }} />
+            <span>
               MathPal is reviewing your work. Ask questions, share more photos, or walk through your steps.
-            </p>
-          </div>
+            </span>
+          </InfoBanner>
 
           {hw.messages.map((m) => (
             <MessageBubble key={m.id} msg={m} />
           ))}
 
           {tutorTyping ? <TypingBubble /> : null}
-        </div>
-      </div>
+        </ScrollInner>
+      </ScrollArea>
 
-      <div className="border-t bg-background">
-        <div className="max-w-2xl mx-auto p-3 space-y-2">
+      <Composer>
+        <ComposerInner>
           {pendingImages.length > 0 ? (
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <PendingStrip>
               {pendingImages.map((src, i) => (
-                <div key={i} className="relative h-16 w-16 rounded-lg overflow-hidden shrink-0">
-                  <img src={src} className="w-full h-full object-cover" alt="" />
-                  <button
-                    onClick={() => setPendingImages((p) => p.filter((_, j) => j !== i))}
-                    className="absolute top-0.5 right-0.5 h-5 w-5 rounded-full bg-black/70 text-white text-xs"
+                <PendingThumb key={i}>
+                  <PendingImg src={src} alt="" />
+                  <PendingRemove
                     aria-label="Remove"
+                    onClick={() => setPendingImages((p) => p.filter((_, j) => j !== i))}
                   >
                     ×
-                  </button>
-                </div>
+                  </PendingRemove>
+                </PendingThumb>
               ))}
-            </div>
+            </PendingStrip>
           ) : null}
 
-          <div className="flex items-end gap-2">
-            <div className="flex gap-1">
-              <button
-                onClick={() => cameraRef.current?.click()}
-                className="h-10 w-10 rounded-full bg-muted hover:bg-muted/70 flex items-center justify-center text-muted-foreground"
-                aria-label="Take photo"
-              >
-                <Camera className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => galleryRef.current?.click()}
-                className="h-10 w-10 rounded-full bg-muted hover:bg-muted/70 flex items-center justify-center text-muted-foreground"
-                aria-label="Attach image"
-              >
-                <ImagePlus className="h-5 w-5" />
-              </button>
-            </div>
+          <ComposerRow>
+            <IconBtn aria-label="Take photo" onClick={() => cameraRef.current?.click()}>
+              <CameraAltIcon />
+            </IconBtn>
+            <IconBtn aria-label="Attach image" onClick={() => galleryRef.current?.click()}>
+              <AddPhotoAlternateIcon />
+            </IconBtn>
 
-            <Textarea
+            <MessageField
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
@@ -158,85 +171,75 @@ function ReviewPage() {
                 }
               }}
               placeholder="Ask MathPal anything…"
-              rows={1}
-              className="min-h-10 max-h-32 resize-none rounded-2xl"
+              multiline
+              maxRows={5}
             />
 
-            <Button
-              size="icon"
-              className="h-10 w-10 rounded-full shrink-0"
+            <IconButton
+              color="primary"
+              aria-label="Send"
               onClick={send}
               disabled={!text.trim() && pendingImages.length === 0}
-              aria-label="Send"
+              sx={{
+                width: 40,
+                height: 40,
+                bgcolor: "primary.main",
+                color: "primary.contrastText",
+                "&:hover": { bgcolor: "primary.dark" },
+                "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
+              }}
             >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+              <SendIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </ComposerRow>
 
-          <input
+          <HiddenInput
             ref={cameraRef}
             type="file"
             accept="image/*"
             capture="environment"
             multiple
-            className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
-          <input
+          <HiddenInput
             ref={galleryRef}
             type="file"
             accept="image/*"
             multiple
-            className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
-        </div>
-      </div>
-    </div>
+        </ComposerInner>
+      </Composer>
+    </PageRoot>
   );
 }
 
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isStudent = msg.role === "student";
   return (
-    <div className={`flex ${isStudent ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] space-y-2 ${isStudent ? "items-end" : "items-start"} flex flex-col`}>
+    <Row isStudent={isStudent}>
+      <BubbleStack isStudent={isStudent}>
         {msg.images && msg.images.length > 0 ? (
-          <div className={`grid gap-1.5 ${msg.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <ImageGrid multi={msg.images.length > 1}>
             {msg.images.map((src, i) => (
-              <img
-                key={i}
-                src={src}
-                alt=""
-                className="rounded-2xl max-h-56 w-full object-cover border"
-              />
+              <BubbleImage key={i} src={src} alt="" />
             ))}
-          </div>
+          </ImageGrid>
         ) : null}
-        {msg.text ? (
-          <div
-            className={
-              isStudent
-                ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-2.5 text-sm leading-relaxed"
-                : "bg-card border rounded-2xl rounded-bl-md px-4 py-2.5 text-sm leading-relaxed"
-            }
-          >
-            {msg.text}
-          </div>
-        ) : null}
-      </div>
-    </div>
+        {msg.text ? <Bubble isStudent={isStudent}>{msg.text}</Bubble> : null}
+      </BubbleStack>
+    </Row>
   );
 }
 
 function TypingBubble() {
   return (
-    <div className="flex justify-start">
-      <div className="bg-card border rounded-2xl rounded-bl-md px-4 py-3 flex gap-1">
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.2s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.1s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" />
-      </div>
-    </div>
+    <Row isStudent={false}>
+      <TypingBubbleEl>
+        <span />
+        <span />
+        <span />
+      </TypingBubbleEl>
+    </Row>
   );
 }
