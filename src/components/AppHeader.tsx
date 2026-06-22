@@ -1,46 +1,50 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { IconButton } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { logout } from "@/lib/api";
+import { StyledAppBar, HeaderToolbar, Title, RightSlot } from "./AppHeader.style";
 
-export function AppHeader({
-  title,
-  back,
-  showLogout,
-  right,
-}: {
+export interface AppHeaderProps {
   title: string;
   back?: string;
   showLogout?: boolean;
-  right?: React.ReactNode;
-}) {
+  right?: ReactNode;
+}
+
+export function AppHeader({ title, back, showLogout, right }: AppHeaderProps) {
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-md border-b">
-      <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-2">
+    <StyledAppBar position="sticky" elevation={0}>
+      <HeaderToolbar disableGutters>
         {back ? (
-          <Button asChild variant="ghost" size="icon" className="-ml-2">
-            <Link to={back}>
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-        ) : null}
-        <h1 className="font-semibold text-lg flex-1 truncate">{title}</h1>
-        {right}
-        {showLogout ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              logout();
-              navigate({ to: "/" });
-            }}
-            aria-label="Log out"
+          <IconButton
+            edge="start"
+            aria-label="Back"
+            onClick={() => navigate({ to: back })}
           >
-            <LogOut className="h-5 w-5" />
-          </Button>
+            <ArrowBackIcon />
+          </IconButton>
         ) : null}
-      </div>
-    </header>
+        <Title variant="h6" component="h1">
+          {title}
+        </Title>
+        <RightSlot>
+          {right}
+          {showLogout ? (
+            <IconButton
+              aria-label="Log out"
+              onClick={() => {
+                logout();
+                navigate({ to: "/" });
+              }}
+            >
+              <LogoutIcon />
+            </IconButton>
+          ) : null}
+        </RightSlot>
+      </HeaderToolbar>
+    </StyledAppBar>
   );
 }
