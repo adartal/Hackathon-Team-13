@@ -1,6 +1,22 @@
-# Vercel detects this FastAPI app via the entrypoint below, so api/index.py can
-# stay where it is (no need to move the app to a root main.py). If Vercel ever
-# fails to detect it, the fallback is to expose `app` from a root-level
-# main.py / index.py instead.
+# Vercel's Python build uses `uv` whenever a pyproject.toml exists, so this must
+# be a valid PEP 621 project (deps under [project]) — not just [tool.vercel].
+# Keep dependencies in sync with requirements.txt (CI / local pip still use it).
+[project]
+name = "ai-math-tutor"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "jinja2",
+    "python-multipart",
+    "psycopg[binary]",
+    "google-genai",
+]
+
+[tool.uv]
+# Install dependencies only; don't try to build this repo as a package.
+package = false
+
 [tool.vercel]
+# Documented way to point Vercel at a FastAPI app that isn't a root main.py.
 entrypoint = "api.index:app"
