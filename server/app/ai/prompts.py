@@ -77,8 +77,8 @@ def build_tutor_system(
 
 ANALYSIS_PROMPT = (
     "Answer in Hebrew."
-    "Look at this photo of a student's solved math problem. Identify the "
-    "problem, transcribe the student's final written answer, and decide if it is "
+    "Look at this photo of a student's solved math problem. Identify a "
+    "problem if there is one, transcribe the student's final written answer, and decide if it is "
     "correct; if not, name the single underlying mistake. Add a one-line "
     "observation of what the student actually did (right or wrong). Set confidence "
     "honestly: if the photo is unreadable or you are unsure, use a low value. "

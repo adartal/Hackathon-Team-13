@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class ConversationSummary(BaseModel):
     id: str
     name: str
+    cover_image_url: str | None = None
 
 
 class CreateConversationRequest(BaseModel):

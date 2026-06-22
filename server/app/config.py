@@ -2,6 +2,10 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     s3_endpoint_url: str = "http://localhost:9000"
+    # Public URL the browser can reach for presigned URLs. In Docker Compose the
+    # backend talks to MinIO via the internal hostname (s3-server:9000) but the
+    # browser must use the host-exposed port (localhost:9000).
+    s3_public_url: str = ""
     s3_access_key: str = "local-s3-access-key"
     s3_secret_key: str = "local-s3-secret-key"
     s3_region: str = "us-east-1"
