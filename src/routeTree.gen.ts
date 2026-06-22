@@ -13,6 +13,7 @@ import { Route as NewRouteImport } from './routes/new'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReviewIdRouteImport } from './routes/review.$id'
 
 const NewRoute = NewRouteImport.update({
   id: '/new',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewIdRoute = ReviewIdRouteImport.update({
+  id: '/review/$id',
+  path: '/review/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
   '/new': typeof NewRoute
+  '/review/$id': typeof ReviewIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
   '/new': typeof NewRoute
+  '/review/$id': typeof ReviewIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/home': typeof HomeRoute
   '/new': typeof NewRoute
+  '/review/$id': typeof ReviewIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/history' | '/home' | '/new'
+  fullPaths: '/' | '/history' | '/home' | '/new' | '/review/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/history' | '/home' | '/new'
-  id: '__root__' | '/' | '/history' | '/home' | '/new'
+  to: '/' | '/history' | '/home' | '/new' | '/review/$id'
+  id: '__root__' | '/' | '/history' | '/home' | '/new' | '/review/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   HomeRoute: typeof HomeRoute
   NewRoute: typeof NewRoute
+  ReviewIdRoute: typeof ReviewIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/review/$id': {
+      id: '/review/$id'
+      path: '/review/$id'
+      fullPath: '/review/$id'
+      preLoaderRoute: typeof ReviewIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   HomeRoute: HomeRoute,
   NewRoute: NewRoute,
+  ReviewIdRoute: ReviewIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
