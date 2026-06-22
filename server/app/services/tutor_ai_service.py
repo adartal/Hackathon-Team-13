@@ -25,7 +25,7 @@ from typing import Any
 
 from fastapi.concurrency import run_in_threadpool
 
-from app.ai import llm
+from app.ai import llm, taxonomy
 from app.ai.prompts import AnalysisResult, build_tutor_system
 from app.config import Settings
 from app.schemas.tutor import ConversationContext, LearnerProfile, TutoringPlan
@@ -69,7 +69,11 @@ class TutorAIService:
         analysis: AnalysisResult | None = None
         if image:
             analysis = await run_in_threadpool(llm.analyze, image, image_mime)
+            # Canonicalize the free-form tag so mastery aggregates cleanly.
+            analysis.concept = taxonomy.normalize_concept(analysis.concept)
 
+        # Built from the CURRENT (pre-adapt) profile: this turn's verdict should
+        # not swing the very prompt that grades it — adaptation lands next turn.
         system = build_tutor_system(
             profile.style,
             profile.pace,
@@ -78,19 +82,43 @@ class TutorAIService:
             profile.struggle_summary(),
         )
 
-        # Call B — private structured plan (the "thinking" step).
+        # Within-problem hint ladder: how many times they've tried THIS problem.
+        _, attempts_on_problem = context.compute_problem_state(
+            analysis.problem if analysis else None,
+            analysis.is_correct if analysis else None,
+        )
+        scaffold_level = min(max(attempts_on_problem - 1, 0), 2)
+
+        # Proactive next-step: only when they just nailed it (and we trust the grade).
+        next_suggestion = ""
+        rec: dict[str, str] | None = None
+        if analysis and analysis.is_correct and analysis.confidence >= LOW_CONFIDENCE:
+            rec = profile.recommend_next()
+            if rec:
+                next_suggestion = f"{rec['he_name']} ({rec['difficulty']})"
+
+        # Call B — private structured plan (the "thinking" step). Also yields the
+        # student-affect read that feeds the adaptation loop — no extra LLM call.
         plan: TutoringPlan | None = None
         if self._settings.tutor_enable_plan:
             try:
                 plan = await run_in_threadpool(
-                    llm.plan, system, self._plan_context(analysis, student_text, context)
+                    llm.plan,
+                    system,
+                    self._plan_context(analysis, student_text, context, scaffold_level),
                 )
             except Exception as e:  # pragma: no cover - degrade to direct reply
                 logger.error(f"Plan step failed, replying without it: {e}")
 
+        affect = self._affect_of(plan)
+
         # Call C — the human-facing reply.
         reply = await run_in_threadpool(
-            llm.tutor, system, self._reply_context(analysis, student_text, context, plan)
+            llm.tutor,
+            system,
+            self._reply_context(
+                analysis, student_text, context, plan, scaffold_level, next_suggestion
+            ),
         )
 
         # Call D — optional answer-leak guard.
@@ -105,10 +133,15 @@ class TutorAIService:
         }
         if student_text.strip():
             feedback["student_text"] = student_text
+        if rec:
+            feedback["next_suggestion"] = rec
 
         # Update memory (best-effort; the student already has their reply).
         if analysis:
             profile.record(analysis.concept, analysis.is_correct, analysis.error_type)
+        # Close the loop: re-derive the prompt dials from accumulated evidence.
+        profile.adapt(affect=affect)
+        if analysis or affect != "neutral":
             await self._profiles.save(student_id, profile)
         await self._contexts.update(
             student_id,
@@ -128,8 +161,9 @@ class TutorAIService:
         analysis: AnalysisResult | None,
         student_text: str,
         context: ConversationContext,
+        scaffold_level: int = 0,
     ) -> str:
-        parts = self._situation(analysis, student_text)
+        parts = self._situation(analysis, student_text, scaffold_level)
         rendered = context.render()
         if rendered:
             parts.append(f"Session memory:\n{rendered}")
@@ -141,8 +175,10 @@ class TutorAIService:
         student_text: str,
         context: ConversationContext,
         plan: TutoringPlan | None,
+        scaffold_level: int = 0,
+        next_suggestion: str = "",
     ) -> str:
-        parts = self._situation(analysis, student_text)
+        parts = self._situation(analysis, student_text, scaffold_level, next_suggestion)
         rendered = context.render()
         if rendered:
             parts.append(f"Session memory:\n{rendered}")
@@ -152,7 +188,12 @@ class TutorAIService:
         return "\n".join(parts)
 
     @staticmethod
-    def _situation(analysis: AnalysisResult | None, student_text: str) -> list[str]:
+    def _situation(
+        analysis: AnalysisResult | None,
+        student_text: str,
+        scaffold_level: int = 0,
+        next_suggestion: str = "",
+    ) -> list[str]:
         parts: list[str] = []
         if analysis:
             parts.append(f"Problem: {analysis.problem}")
@@ -164,12 +205,24 @@ class TutorAIService:
             if analysis.observation:
                 parts.append(f"Observation: {analysis.observation}")
             # The single instruction that makes the tutor branch on the verdict.
-            parts.append(TutorAIService._verdict_directive(analysis))
+            parts.append(
+                TutorAIService._verdict_directive(analysis, scaffold_level, next_suggestion)
+            )
         parts.append(f"The student says: {student_text.strip() or '(no message)'}")
         return parts
 
+    # Within-problem hint ladder: how strongly to scaffold an incorrect attempt,
+    # escalating as the student keeps missing the SAME problem. Never the answer.
+    _SCAFFOLD_HINT = {
+        0: "This is a first attempt: give a gentle nudge or one guiding question, no steps yet.",
+        1: "They've tried before: be more specific — point directly at the step that went wrong.",
+        2: "They've struggled several times: walk the method step by step, but still never state the final answer.",
+    }
+
     @staticmethod
-    def _verdict_directive(analysis: AnalysisResult) -> str:
+    def _verdict_directive(
+        analysis: AnalysisResult, scaffold_level: int = 0, next_suggestion: str = ""
+    ) -> str:
         """Turn the graded verdict into one explicit behavioural instruction."""
         if analysis.confidence < LOW_CONFIDENCE:
             return (
@@ -178,16 +231,29 @@ class TutorAIService:
             )
         if analysis.is_correct:
             ref = f" (reference: {analysis.observation})" if analysis.observation else ""
+            nxt = (
+                f" Then suggest practicing {next_suggestion} next."
+                if next_suggestion
+                else ""
+            )
             return (
                 "DIRECTIVE: The student's answer is CORRECT. Affirm it specifically"
                 f"{ref}, then ask what they'd like to do next — a harder challenge, an "
-                "extension, or a new problem."
+                f"extension, or a new problem.{nxt}"
             )
+        ladder = TutorAIService._SCAFFOLD_HINT.get(scaffold_level, TutorAIService._SCAFFOLD_HINT[0])
         return (
             f"DIRECTIVE: The student's answer is INCORRECT — mistake: "
             f"{analysis.error_type}, concept: {analysis.concept}. Guide them to find "
-            "and fix it themselves without revealing the answer."
+            f"and fix it themselves without revealing the answer. {ladder}"
         )
+
+    @staticmethod
+    def _affect_of(plan: TutoringPlan | None) -> str:
+        """Validated student-affect read from the plan ("neutral" when absent)."""
+        if plan and plan.student_affect in ("frustrated", "neutral", "confident"):
+            return plan.student_affect
+        return "neutral"
 
     async def _self_check(self, system: str, draft: str) -> str:
         """Cheap guard: rewrite the draft if it leaks the final answer or rambles."""

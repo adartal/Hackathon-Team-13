@@ -81,6 +81,14 @@ class ContextService:
         if analysis and analysis.problem:
             context.current_problem = analysis.problem
 
+        # Persist the within-problem hint-ladder state (same pure logic the
+        # tutor used at reply time): advance on a repeated wrong attempt, reset
+        # on a correct answer or a new problem.
+        context.problem_signature, context.attempts_on_problem = context.compute_problem_state(
+            analysis.problem if analysis else None,
+            analysis.is_correct if analysis else None,
+        )
+
         student_line = student_text.strip() or (
             "(shared homework photo)" if analysis else ""
         )
