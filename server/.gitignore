@@ -1,0 +1,25 @@
+# --- PyCharm / JetBrains ---
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# --- Python ---
+*__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+# If you name your venv something else (like .env or venv), add it here
+venv/
+.venv/
+env/
+.env/
+
+# --- OS / Miscellaneous ---
+.DS_Store          # macOS
+Thumbs.db          # Windows
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
