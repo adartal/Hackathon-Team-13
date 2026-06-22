@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.dependencies import get_async_s3_service, get_s3_session, get_settings
 from app.exceptions import register_exception_handlers
-from app.routers import tutor
+from app.routers import student, tutor
 from app.routers import auth as auth_router
 from app.routers import teacher as teacher_router
 
@@ -64,6 +64,7 @@ register_exception_handlers(app)
 app.include_router(auth_router.router)
 app.include_router(teacher_router.router)
 app.include_router(tutor.router)
+app.include_router(student.router)
 
 
 @app.get("/", tags=["General"], summary="Root Endpoint")

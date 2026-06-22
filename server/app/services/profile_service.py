@@ -40,7 +40,12 @@ class ProfileService:
         key = profile_key(student_id)
         try:
             data = await self._s3.get_object_as_json(self._bucket, key)
-            return LearnerProfile.model_validate(data)
+            profile = LearnerProfile.model_validate(data)
+            # One-time fold of legacy free-form concept keys onto the taxonomy;
+            # persist immediately so the migration only happens once.
+            if profile.migrate_concepts():
+                await self.save(student_id, profile)
+            return profile
         except FileKeyNotFoundError:
             return LearnerProfile()
         except Exception as e:  # pragma: no cover - defensive

@@ -206,6 +206,56 @@ function historyToHomework(h: ConversationHistory): Homework {
   };
 }
 
+// ---------- ADAPTIVE NEXT-STEP ----------
+export interface NextStep {
+  concept: string | null;
+  he_name: string | null;
+  difficulty: string | null;
+  practice_problem: string | null;
+}
+
+// Proactive recommendation of what this student should practice next, derived
+// from their accumulated mastery profile. Returns null when nothing is due.
+export async function getNextStep(opts?: { generate?: boolean }): Promise<NextStep | null> {
+  const sid = studentId();
+  const { data } = await api.get<NextStep>(`/students/${sid}/next`, {
+    params: opts?.generate ? { generate: true } : undefined,
+  });
+  return data.concept ? data : null;
+}
+
+export interface ConceptOption {
+  concept: string;
+  he_name: string;
+  in_grade: boolean;
+}
+
+// The subjects a student can pick to practice (grade-appropriate first).
+export async function listConcepts(): Promise<ConceptOption[]> {
+  const sid = studentId();
+  const { data } = await api.get<ConceptOption[]>(`/students/${sid}/concepts`);
+  return data;
+}
+
+export interface PracticeStart {
+  conversation_id: string;
+  concept: string;
+  he_name: string;
+  difficulty: string;
+  problem: string;
+}
+
+// Start a practice session: the backend generates a grade-aligned problem for the
+// chosen (or recommended) concept and opens a new conversation seeded with it.
+// Returns the new conversation id so the caller can navigate straight into chat.
+export async function startPractice(concept?: string): Promise<PracticeStart> {
+  const sid = studentId();
+  const { data } = await api.post<PracticeStart>(`/students/${sid}/practice`, null, {
+    params: concept ? { concept } : undefined,
+  });
+  return data;
+}
+
 // ---------- HOMEWORK ----------
 export async function listHomeworks(): Promise<Homework[]> {
   const sid = studentId();
