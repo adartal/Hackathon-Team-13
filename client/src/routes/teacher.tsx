@@ -160,7 +160,12 @@ function TeacherPage() {
     setAssigning(true);
     setAssignError(null);
     try {
-      await assignQuestion(user.id, assignTarget.user_id, generatedProblem, assignName.trim() || undefined);
+      await assignQuestion(
+        user.id,
+        assignTarget.user_id,
+        generatedProblem,
+        assignName.trim() || undefined,
+      );
       setAssignDone(true);
     } catch (err: unknown) {
       const msg =
@@ -194,7 +199,7 @@ function TeacherPage() {
   function toggleAll() {
     const all = students ?? [];
     setBulkSelected(
-      bulkSelected.size === all.length ? new Set() : new Set(all.map((s) => s.user_id))
+      bulkSelected.size === all.length ? new Set() : new Set(all.map((s) => s.user_id)),
     );
   }
 
@@ -309,15 +314,23 @@ function TeacherPage() {
         <DialogTitle>
           Assign a question to <strong>{assignTarget?.username}</strong>
         </DialogTitle>
-        <DialogContent sx={{ pt: "8px !important", display: "flex", flexDirection: "column", gap: 2 }}>
+        <DialogContent
+          sx={{ pt: "8px !important", display: "flex", flexDirection: "column", gap: 2 }}
+        >
           {assignDone ? (
             <Alert severity="success" sx={{ borderRadius: 2 }}>
               <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
                 Question assigned successfully!
               </Typography>
               <Typography
-                variant="body2" component="div"
-                sx={{ direction: "rtl", textAlign: "right", "& p": { margin: 0 }, "& .katex": { unicodeBidi: "isolate" } }}
+                variant="body2"
+                component="div"
+                sx={{
+                  direction: "rtl",
+                  textAlign: "right",
+                  "& p": { margin: 0 },
+                  "& .katex": { unicodeBidi: "isolate" },
+                }}
               >
                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                   {generatedProblem ?? ""}
@@ -340,13 +353,26 @@ function TeacherPage() {
                 label="Question topic or prompt"
                 placeholder='e.g. "easy fractions", "word problem with percentages"'
                 value={assignPrompt}
-                onChange={(e) => { setAssignPrompt(e.target.value); setAssignError(null); setGeneratedProblem(null); }}
+                onChange={(e) => {
+                  setAssignPrompt(e.target.value);
+                  setAssignError(null);
+                  setGeneratedProblem(null);
+                }}
                 fullWidth
                 multiline
                 rows={2}
-                helperText={!generatedProblem ? (assignError ?? "Describe the topic — AI generates the question in Hebrew") : undefined}
+                helperText={
+                  !generatedProblem
+                    ? (assignError ?? "Describe the topic — AI generates the question in Hebrew")
+                    : undefined
+                }
                 error={!!assignError && !generatedProblem}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !generatedProblem) { e.preventDefault(); handleGenerate(); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !generatedProblem) {
+                    e.preventDefault();
+                    handleGenerate();
+                  }
+                }}
                 disabled={generating || assigning}
               />
               {generatedProblem && (
@@ -354,15 +380,29 @@ function TeacherPage() {
                   severity="info"
                   sx={{ borderRadius: 2, cursor: "default" }}
                   action={
-                    <Button size="small" onClick={() => { setGeneratedProblem(null); setAssignError(null); }}>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setGeneratedProblem(null);
+                        setAssignError(null);
+                      }}
+                    >
                       Regenerate
                     </Button>
                   }
                 >
-                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Generated question:</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                    Generated question:
+                  </Typography>
                   <Typography
-                    variant="body2" component="div"
-                    sx={{ direction: "rtl", textAlign: "right", "& p": { margin: 0 }, "& .katex": { unicodeBidi: "isolate" } }}
+                    variant="body2"
+                    component="div"
+                    sx={{
+                      direction: "rtl",
+                      textAlign: "right",
+                      "& p": { margin: 0 },
+                      "& .katex": { unicodeBidi: "isolate" },
+                    }}
                   >
                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                       {generatedProblem}
@@ -370,8 +410,16 @@ function TeacherPage() {
                   </Typography>
                 </Alert>
               )}
-              {generating && <Alert severity="info" sx={{ borderRadius: 2 }}>Generating question…</Alert>}
-              {assignError && generatedProblem && <Alert severity="error" sx={{ borderRadius: 2 }}>{assignError}</Alert>}
+              {generating && (
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                  Generating question…
+                </Alert>
+              )}
+              {assignError && generatedProblem && (
+                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                  {assignError}
+                </Alert>
+              )}
             </>
           )}
         </DialogContent>
@@ -403,20 +451,30 @@ function TeacherPage() {
       {/* Bulk assign dialog */}
       <Dialog
         open={bulkOpen}
-        onClose={() => { if (!bulkGenerating && !bulkAssigning) setBulkOpen(false); }}
+        onClose={() => {
+          if (!bulkGenerating && !bulkAssigning) setBulkOpen(false);
+        }}
         fullWidth
         maxWidth="sm"
       >
         <DialogTitle>Send a question to students</DialogTitle>
-        <DialogContent sx={{ pt: "8px !important", display: "flex", flexDirection: "column", gap: 2 }}>
+        <DialogContent
+          sx={{ pt: "8px !important", display: "flex", flexDirection: "column", gap: 2 }}
+        >
           {bulkDone ? (
             <Alert severity="success" sx={{ borderRadius: 2 }}>
               <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
                 Question sent to {bulkSelected.size} student{bulkSelected.size !== 1 ? "s" : ""}!
               </Typography>
               <Typography
-                variant="body2" component="div"
-                sx={{ direction: "rtl", textAlign: "right", "& p": { margin: 0 }, "& .katex": { unicodeBidi: "isolate" } }}
+                variant="body2"
+                component="div"
+                sx={{
+                  direction: "rtl",
+                  textAlign: "right",
+                  "& p": { margin: 0 },
+                  "& .katex": { unicodeBidi: "isolate" },
+                }}
               >
                 <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                   {bulkProblem ?? ""}
@@ -439,13 +497,27 @@ function TeacherPage() {
                 label="Question topic or prompt"
                 placeholder='e.g. "easy fractions", "word problem with percentages"'
                 value={bulkPrompt}
-                onChange={(e) => { setBulkPrompt(e.target.value); setBulkError(null); setBulkProblem(null); }}
+                onChange={(e) => {
+                  setBulkPrompt(e.target.value);
+                  setBulkError(null);
+                  setBulkProblem(null);
+                }}
                 fullWidth
                 multiline
                 rows={2}
-                helperText={!bulkProblem ? (bulkError ?? "One question will be generated and sent to all selected students") : undefined}
+                helperText={
+                  !bulkProblem
+                    ? (bulkError ??
+                      "One question will be generated and sent to all selected students")
+                    : undefined
+                }
                 error={!!bulkError && !bulkProblem}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !bulkProblem) { e.preventDefault(); handleBulkGenerate(); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !bulkProblem) {
+                    e.preventDefault();
+                    handleBulkGenerate();
+                  }
+                }}
                 disabled={bulkGenerating || bulkAssigning}
               />
               {bulkProblem && (
@@ -453,15 +525,29 @@ function TeacherPage() {
                   severity="info"
                   sx={{ borderRadius: 2 }}
                   action={
-                    <Button size="small" onClick={() => { setBulkProblem(null); setBulkError(null); }}>
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setBulkProblem(null);
+                        setBulkError(null);
+                      }}
+                    >
                       Regenerate
                     </Button>
                   }
                 >
-                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>Generated question:</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
+                    Generated question:
+                  </Typography>
                   <Typography
-                    variant="body2" component="div"
-                    sx={{ direction: "rtl", textAlign: "right", "& p": { margin: 0 }, "& .katex": { unicodeBidi: "isolate" } }}
+                    variant="body2"
+                    component="div"
+                    sx={{
+                      direction: "rtl",
+                      textAlign: "right",
+                      "& p": { margin: 0 },
+                      "& .katex": { unicodeBidi: "isolate" },
+                    }}
                   >
                     <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                       {bulkProblem}
@@ -469,20 +555,36 @@ function TeacherPage() {
                   </Typography>
                 </Alert>
               )}
-              {bulkGenerating && <Alert severity="info" sx={{ borderRadius: 2 }}>Generating question…</Alert>}
-              {bulkError && bulkProblem && <Alert severity="error" sx={{ borderRadius: 2 }}>{bulkError}</Alert>}
+              {bulkGenerating && (
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                  Generating question…
+                </Alert>
+              )}
+              {bulkError && bulkProblem && (
+                <Alert severity="error" sx={{ borderRadius: 2 }}>
+                  {bulkError}
+                </Alert>
+              )}
               <Divider />
               <div>
                 <FormControlLabel
                   control={
                     <Checkbox
-                      checked={(students?.length ?? 0) > 0 && bulkSelected.size === (students?.length ?? 0)}
-                      indeterminate={bulkSelected.size > 0 && bulkSelected.size < (students?.length ?? 0)}
+                      checked={
+                        (students?.length ?? 0) > 0 && bulkSelected.size === (students?.length ?? 0)
+                      }
+                      indeterminate={
+                        bulkSelected.size > 0 && bulkSelected.size < (students?.length ?? 0)
+                      }
                       onChange={toggleAll}
                       disabled={bulkGenerating || bulkAssigning}
                     />
                   }
-                  label={<Typography variant="body2" fontWeight={600}>Select all</Typography>}
+                  label={
+                    <Typography variant="body2" fontWeight={600}>
+                      Select all
+                    </Typography>
+                  }
                 />
                 <div style={{ display: "flex", flexDirection: "column", paddingLeft: 16 }}>
                   {(students ?? []).map((s) => (
@@ -501,7 +603,11 @@ function TeacherPage() {
                   ))}
                 </div>
               </div>
-              {bulkAssigning && <Alert severity="info" sx={{ borderRadius: 2 }}>Sending to {bulkSelected.size} student{bulkSelected.size !== 1 ? "s" : ""}…</Alert>}
+              {bulkAssigning && (
+                <Alert severity="info" sx={{ borderRadius: 2 }}>
+                  Sending to {bulkSelected.size} student{bulkSelected.size !== 1 ? "s" : ""}…
+                </Alert>
+              )}
             </>
           )}
         </DialogContent>
@@ -512,7 +618,9 @@ function TeacherPage() {
               variant="outlined"
               onClick={handleBulkGenerate}
               disabled={!bulkPrompt.trim() || bulkSelected.size === 0 || bulkGenerating}
-              startIcon={bulkGenerating ? <CircularProgress size={14} color="inherit" /> : undefined}
+              startIcon={
+                bulkGenerating ? <CircularProgress size={14} color="inherit" /> : undefined
+              }
             >
               {bulkGenerating ? "Generating…" : "Generate question"}
             </Button>
@@ -522,9 +630,13 @@ function TeacherPage() {
               variant="contained"
               onClick={handleBulkSend}
               disabled={bulkSelected.size === 0 || bulkAssigning}
-              startIcon={bulkAssigning ? <CircularProgress size={14} color="inherit" /> : <SendIcon />}
+              startIcon={
+                bulkAssigning ? <CircularProgress size={14} color="inherit" /> : <SendIcon />
+              }
             >
-              {bulkAssigning ? "Sending…" : `Send to ${bulkSelected.size} student${bulkSelected.size !== 1 ? "s" : ""}`}
+              {bulkAssigning
+                ? "Sending…"
+                : `Send to ${bulkSelected.size} student${bulkSelected.size !== 1 ? "s" : ""}`}
             </Button>
           )}
         </DialogActions>

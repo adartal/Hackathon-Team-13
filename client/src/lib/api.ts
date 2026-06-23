@@ -110,11 +110,10 @@ export async function removeStudentFromTeacher(
   return data;
 }
 
-export async function generateQuestion(
-  teacherId: string,
-  prompt: string,
-): Promise<string> {
-  const { data } = await api.post<{ problem: string }>(`/teachers/${teacherId}/generate-question`, { prompt });
+export async function generateQuestion(teacherId: string, prompt: string): Promise<string> {
+  const { data } = await api.post<{ problem: string }>(`/teachers/${teacherId}/generate-question`, {
+    prompt,
+  });
   return data.problem;
 }
 

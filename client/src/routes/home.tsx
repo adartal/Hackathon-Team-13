@@ -272,11 +272,15 @@ function EmptyState() {
 export function HomeworkCard({ hw }: { hw: Homework }) {
   return (
     <HomeworkTile to="/review/$id" params={{ id: hw.id } as never}>
-      {hw.coverImage
-        ? <TileImage src={hw.coverImage} alt={hw.title} />
-        : hw.assignedBy
-          ? <TileAssignedBg><SchoolIcon sx={{ fontSize: 56, color: "rgba(255,255,255,0.35)" }} /></TileAssignedBg>
-          : <TileGradient />}
+      {hw.coverImage ? (
+        <TileImage src={hw.coverImage} alt={hw.title} />
+      ) : hw.assignedBy ? (
+        <TileAssignedBg>
+          <SchoolIcon sx={{ fontSize: 56, color: "rgba(255,255,255,0.35)" }} />
+        </TileAssignedBg>
+      ) : (
+        <TileGradient />
+      )}
       <TileShade />
       {hw.assignedBy && (
         <Chip
