@@ -62,11 +62,18 @@ class ConversationService:
         if not keys:
             raise ConversationNotFoundError(student_id, conversation_id)
 
-        meta_name = await self._fetch_conversation_name(
-            student_id, conversation_id, conversation_id
-        )
-        turns_data = parse_turn_files(keys, prefix)
+        meta: dict = {}
+        try:
+            meta = await self._s3.get_object_as_json(
+                self._bucket, meta_key(student_id, conversation_id)
+            )
+        except FileKeyNotFoundError:
+            pass
 
+        meta_name = meta.get("name", conversation_id)
+        status = meta.get("status", "reviewing")
+
+        turns_data = parse_turn_files(keys, prefix)
         sorted_turn_nums = sorted(turns_data.keys())
         tasks = [
             self._build_turn_history_item(turn_num, turns_data[turn_num])
@@ -78,7 +85,17 @@ class ConversationService:
             conversation_id=conversation_id,
             conversation_name=meta_name,
             history=history,
+            status=status,
         )
+
+    async def mark_completed(self, student_id: str, conversation_id: str) -> None:
+        key = meta_key(student_id, conversation_id)
+        try:
+            meta: dict = await self._s3.get_object_as_json(self._bucket, key)
+        except FileKeyNotFoundError:
+            meta = {}
+        meta["status"] = "completed"
+        await self._s3.put_object_json(self._bucket, key, meta)
 
     async def post_turn(
         self,
@@ -157,6 +174,7 @@ class ConversationService:
             name=name,
             cover_image_url=cover_url,
             assigned_by=meta.get("assigned_by"),
+            status=meta.get("status", "reviewing"),
         )
 
     async def _fetch_conversation_name(

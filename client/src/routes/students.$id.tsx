@@ -1,10 +1,20 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Button, Chip, CircularProgress, Typography } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import { getUser } from "@/lib/api";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ForumIcon from "@mui/icons-material/Forum";
+import SchoolIcon from "@mui/icons-material/School";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import {
+  getUser,
+  getStudentOverview,
+  getStudentAiSummary,
+  type StudentOverview,
+} from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import {
   PageRoot,
@@ -16,12 +26,14 @@ import {
   HeaderSub,
   SummaryCard,
   SummaryLabel,
-  SummaryText,
+  StatsRow,
+  StatBox,
+  StatValue,
+  StatLabel,
   SectionTitle,
-  TldrList,
-  TldrRow,
-  TldrIcon,
-  TldrText,
+  ConvoList,
+  ConvoItem,
+  AiSummaryText,
   EmptyTldr,
 } from "./students.$id.style";
 
@@ -30,122 +42,236 @@ export const Route = createFileRoute("/students/$id")({
   component: StudentStatusPage,
 });
 
-// TODO(backend): replace with the real per-student status payload once the
-// AI team's endpoint exists, e.g. GET /students/{id}/status. Expected shape
-// is mirrored below so swapping the mock for a real fetch shouldn't require
-// touching the rest of this component.
-type StudentStatus = {
-  id: string;
-  name?: string;
-  summary: string;
-  improving: string[];
-  strugglingWith: string[];
-};
-
-function getMockStatus(id: string): StudentStatus {
-  return {
-    id,
-    name: "Tom Malki",
-    summary:
-      "Over the last few sessions, this student has been engaging consistently with multi-step algebra problems and is starting to show more confidence working independently before asking for hints. Fraction operations remain a recurring sticking point, especially when mixed with negative numbers.",
-    improving: [
-      "Solving multi-step linear equations",
-      "Showing work step-by-step",
-      "Asking targeted questions instead of asking for the answer",
-    ],
-    strugglingWith: [
-      "Operations with negative fractions",
-      "Word problems involving rates",
-      "Checking final answers for reasonableness",
-    ],
-  };
+function buildStatsSummary(overview: StudentOverview): string {
+  const { stats } = overview;
+  if (stats.total_conversations === 0) return "No conversations yet.";
+  const parts: string[] = [];
+  if (stats.done_count > 0)
+    parts.push(`${stats.done_count} submitted`);
+  if (stats.assigned_count > 0)
+    parts.push(`${stats.assigned_count} assigned`);
+  if (stats.practice_count > 0)
+    parts.push(`${stats.practice_count} practice`);
+  return `${stats.total_conversations} session${stats.total_conversations !== 1 ? "s" : ""} (${parts.join(", ")}), ${stats.total_turns} turn${stats.total_turns !== 1 ? "s" : ""} total.`;
 }
 
 function StudentStatusPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<StudentStatus | null>(null);
+  const [overview, setOverview] = useState<StudentOverview | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && !getUser()) {
-      navigate({ to: "/" });
-      return;
-    }
-    // TODO(backend): swap for a real fetch, e.g.
-    // getStudentStatus(id).then(setStatus);
-    setStatus(getMockStatus(id));
+    if (typeof window === "undefined") return;
+    const user = getUser();
+    if (!user) { navigate({ to: "/" }); return; }
+    if (user.role !== "teacher") { navigate({ to: "/home" }); return; }
+    getStudentOverview(user.id, id)
+      .then(setOverview)
+      .catch(() => setLoadError("Could not load student data."));
   }, [id, navigate]);
 
-  if (!status) {
+  function loadAiSummary() {
+    const user = getUser();
+    if (!user) return;
+    setAiLoading(true);
+    setAiError(false);
+    getStudentAiSummary(user.id, id)
+      .then((s) => { setAiSummary(s); setAiLoading(false); })
+      .catch(() => { setAiError(true); setAiLoading(false); });
+  }
+
+  if (loadError) {
     return (
       <PageRoot>
-        <AppHeader title="Loading…" back="/teacher" />
+        <AppHeader title="Student progress" back="/teacher" />
+        <Main><Typography color="error">{loadError}</Typography></Main>
       </PageRoot>
     );
+  }
+
+  if (!overview) {
+    return (
+      <PageRoot>
+        <AppHeader title="Student progress" back="/teacher" />
+        <Main>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 40 }}>
+            <CircularProgress />
+          </div>
+        </Main>
+      </PageRoot>
+    );
+  }
+
+  const { stats, conversations } = overview;
+  const done = conversations.filter((c) => c.status === "completed");
+  const activeAssigned = conversations.filter((c) => c.assigned_by && c.status !== "completed");
+  const practice = conversations.filter((c) => !c.assigned_by && c.status !== "completed");
+
+  function openConversation(conversationId: string) {
+    navigate({
+      to: "/review/$id",
+      params: { id: conversationId },
+      search: { studentId: overview!.student_id },
+    });
   }
 
   return (
     <PageRoot>
       <AppHeader title="Student progress" back="/teacher" />
       <Main>
+        {/* Header */}
         <HeaderCard>
           <AvatarCircle>
             <PersonIcon sx={{ fontSize: 28 }} />
           </AvatarCircle>
           <HeaderInfo>
-            <HeaderId>{status.name ?? status.id}</HeaderId>
+            <HeaderId>{overview.username ?? id}</HeaderId>
+            <HeaderSub>{buildStatsSummary(overview)}</HeaderSub>
           </HeaderInfo>
         </HeaderCard>
 
+        {/* Stats */}
+        <StatsRow>
+          <StatBox>
+            <StatValue>{stats.total_conversations}</StatValue>
+            <StatLabel>Sessions</StatLabel>
+          </StatBox>
+          <StatBox done>
+            <StatValue done>{stats.done_count}</StatValue>
+            <StatLabel>Submitted</StatLabel>
+          </StatBox>
+          <StatBox>
+            <StatValue>{stats.total_turns}</StatValue>
+            <StatLabel>Turns</StatLabel>
+          </StatBox>
+        </StatsRow>
+
+        {/* AI Summary */}
         <SummaryCard>
           <SummaryLabel>
             <AutoAwesomeIcon sx={{ fontSize: 16 }} />
-            <span>AI summary</span>
+            <span>AI progress summary</span>
+            {!aiSummary && !aiLoading && (
+              <Button
+                size="small"
+                variant="outlined"
+                sx={{ ml: "auto", fontSize: "0.7rem", py: 0.25, px: 1, minWidth: 0 }}
+                onClick={loadAiSummary}
+              >
+                Generate
+              </Button>
+            )}
+            {aiSummary && !aiLoading && (
+              <Button
+                size="small"
+                startIcon={<RefreshIcon sx={{ fontSize: 14 }} />}
+                sx={{ ml: "auto", fontSize: "0.7rem", py: 0.25, px: 1, minWidth: 0 }}
+                onClick={loadAiSummary}
+              >
+                Refresh
+              </Button>
+            )}
           </SummaryLabel>
-          <SummaryText>{status.summary}</SummaryText>
+
+          {aiLoading && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <CircularProgress size={16} />
+              <Typography variant="body2" color="text.secondary">
+                Analysing conversations…
+              </Typography>
+            </div>
+          )}
+          {aiError && (
+            <Typography variant="body2" color="error">
+              Could not generate summary. Try again.
+            </Typography>
+          )}
+          {aiSummary && !aiLoading && (
+            <AiSummaryText>{aiSummary}</AiSummaryText>
+          )}
+          {!aiSummary && !aiLoading && !aiError && (
+            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              Click "Generate" to get an AI analysis of this student's strengths and struggles.
+            </Typography>
+          )}
         </SummaryCard>
 
-        <section>
-          <SectionTitle>
-            <TrendingUpIcon sx={{ fontSize: 20, color: "#16a34a" }} />
-            <span>Improving</span>
-          </SectionTitle>
-          {status.improving.length === 0 ? (
-            <EmptyTldr>Nothing flagged yet</EmptyTldr>
-          ) : (
-            <TldrList>
-              {status.improving.map((point, i) => (
-                <TldrRow key={i} tone="positive">
-                  <TldrIcon tone="positive">
-                    <TrendingUpIcon sx={{ fontSize: 16 }} />
-                  </TldrIcon>
-                  <TldrText tone="positive">{point}</TldrText>
-                </TldrRow>
+        {/* Done sessions */}
+        {done.length > 0 && (
+          <section>
+            <SectionTitle>
+              <CheckCircleIcon sx={{ fontSize: 20, color: "success.main" }} />
+              <span>Submitted sessions</span>
+            </SectionTitle>
+            <ConvoList>
+              {done.map((c) => (
+                <ConvoItem key={c.id} onClick={() => openConversation(c.id)}>
+                  {c.assigned_by
+                    ? <SchoolIcon sx={{ fontSize: 20, color: "success.main", flexShrink: 0 }} />
+                    : <ForumIcon sx={{ fontSize: 20, color: "success.main", flexShrink: 0 }} />}
+                  <Typography variant="body2" fontWeight={500} sx={{ flex: 1 }}>
+                    {c.name}
+                  </Typography>
+                  <Chip label="הושלם" size="small" color="success" variant="outlined" sx={{ fontSize: "0.65rem", height: 20 }} />
+                  <ChevronRightIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                </ConvoItem>
               ))}
-            </TldrList>
-          )}
-        </section>
+            </ConvoList>
+          </section>
+        )}
 
-        <section>
-          <SectionTitle>
-            <TrendingDownIcon sx={{ fontSize: 20, color: "#dc2626" }} />
-            <span>Struggling with</span>
-          </SectionTitle>
-          {status.strugglingWith.length === 0 ? (
-            <EmptyTldr>Nothing flagged yet</EmptyTldr>
-          ) : (
-            <TldrList>
-              {status.strugglingWith.map((point, i) => (
-                <TldrRow key={i} tone="negative">
-                  <TldrIcon tone="negative">
-                    <TrendingDownIcon sx={{ fontSize: 16 }} />
-                  </TldrIcon>
-                  <TldrText tone="negative">{point}</TldrText>
-                </TldrRow>
+        {/* Active assigned questions */}
+        {activeAssigned.length > 0 && (
+          <section>
+            <SectionTitle>
+              <AssignmentIcon sx={{ fontSize: 20, color: "primary.main" }} />
+              <span>Assigned questions</span>
+            </SectionTitle>
+            <ConvoList>
+              {activeAssigned.map((c) => (
+                <ConvoItem key={c.id} onClick={() => openConversation(c.id)}>
+                  <SchoolIcon sx={{ fontSize: 20, color: "primary.main", flexShrink: 0 }} />
+                  <Typography variant="body2" fontWeight={500} sx={{ flex: 1 }}>
+                    {c.name}
+                  </Typography>
+                  <Chip label="Assigned" size="small" color="primary" variant="outlined" sx={{ fontSize: "0.65rem", height: 20 }} />
+                  <ChevronRightIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                </ConvoItem>
               ))}
-            </TldrList>
-          )}
-        </section>
+            </ConvoList>
+          </section>
+        )}
+
+        {/* Practice sessions */}
+        {practice.length > 0 && (
+          <section>
+            <SectionTitle>
+              <ForumIcon sx={{ fontSize: 20, color: "text.secondary" }} />
+              <span>Practice sessions</span>
+            </SectionTitle>
+            <ConvoList>
+              {practice.map((c) => (
+                <ConvoItem key={c.id} onClick={() => openConversation(c.id)}>
+                  <ForumIcon sx={{ fontSize: 20, color: "text.secondary", flexShrink: 0 }} />
+                  <Typography variant="body2" fontWeight={500} sx={{ flex: 1 }}>
+                    {c.name}
+                  </Typography>
+                  <ChevronRightIcon sx={{ fontSize: 18, color: "text.disabled" }} />
+                </ConvoItem>
+              ))}
+            </ConvoList>
+          </section>
+        )}
+
+        {conversations.length === 0 && (
+          <EmptyTldr>
+            No conversations yet — assign a question or wait for the student to start practicing.
+          </EmptyTldr>
+        )}
       </Main>
     </PageRoot>
   );

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Path, UploadFile, status
+from starlette.concurrency import run_in_threadpool
 
+from app.ai import llm
 from app.dependencies import get_conversation_service, get_tutor_ai_service
 from app.schemas.images import ImageUpload
 from app.schemas.tutor import (
@@ -7,6 +9,7 @@ from app.schemas.tutor import (
     ConversationSummary,
     CreateConversationRequest,
     PostTurnResult,
+    SubmitConversationResponse,
 )
 from app.services.conversation_service import ConversationService
 from app.services.tutor_ai_service import TutorAIService
@@ -142,3 +145,72 @@ async def post_conversation_turn(
         feedback_data=feedback_data,
         images=uploads,
     )
+
+
+def _build_dialogue(history: ConversationHistory) -> str:
+    lines: list[str] = []
+    for turn in history.history:
+        if not turn.ai_feedback:
+            continue
+        if turn.turn == 0:
+            reply = turn.ai_feedback.get("reply", "")
+            if reply:
+                lines.append(f"שאלה: {reply}")
+        else:
+            student_text = turn.ai_feedback.get("student_text", "")
+            if student_text:
+                lines.append(f"תלמיד: {student_text}")
+            reply = turn.ai_feedback.get("reply", "")
+            if reply:
+                lines.append(f"מורה AI: {reply}")
+    return "\n".join(lines) if lines else "(שיחה ריקה)"
+
+
+@router.post(
+    "/{conversation_id}/submit",
+    summary="Submit Conversation",
+    response_model=SubmitConversationResponse,
+)
+async def submit_conversation(
+    student_id: str = StudentId,
+    conversation_id: str = ConversationId,
+    service: ConversationService = Depends(get_conversation_service),
+) -> SubmitConversationResponse:
+    """Mark a conversation as completed and post an AI-generated Hebrew review."""
+    history = await service.get_history(student_id, conversation_id)
+
+    if history.status == "completed":
+        # Already submitted — return the last tutor message as the review.
+        last_reply = next(
+            (
+                turn.ai_feedback.get("reply", "")
+                for turn in reversed(history.history)
+                if turn.ai_feedback and turn.ai_feedback.get("reply")
+            ),
+            "",
+        )
+        return SubmitConversationResponse(review=last_reply, status="completed")
+
+    dialogue = _build_dialogue(history)
+    review = await run_in_threadpool(
+        llm.generate_conversation_review, history.conversation_name, dialogue
+    )
+
+    next_turn = len(history.history)
+    await service.post_turn(
+        student_id=student_id,
+        conversation_id=conversation_id,
+        conversation_name=history.conversation_name,
+        turn_number=next_turn,
+        feedback_data={
+            "reply": review,
+            "is_correct": None,
+            "concept": None,
+            "error_type": None,
+        },
+        images=[],
+    )
+
+    await service.mark_completed(student_id, conversation_id)
+
+    return SubmitConversationResponse(review=review, status="completed")

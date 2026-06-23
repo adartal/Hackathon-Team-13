@@ -278,7 +278,11 @@ function TeacherPage() {
                   {s.username}
                 </Typography>
                 <Tooltip title="Assign a question">
-                  <IconButton size="small" color="primary" onClick={() => openAssignDialog(s)}>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={(e) => { e.stopPropagation(); openAssignDialog(s); }}
+                  >
                     <AddIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
@@ -287,7 +291,7 @@ function TeacherPage() {
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => handleRemoveStudent(s.user_id)}
+                      onClick={(e) => { e.stopPropagation(); handleRemoveStudent(s.user_id); }}
                       disabled={removingId === s.user_id}
                     >
                       {removingId === s.user_id ? (

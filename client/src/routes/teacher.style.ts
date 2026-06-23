@@ -23,6 +23,12 @@ export const StudentCard = styled(Paper)(({ theme }) => ({
   gap: theme.spacing(1.5),
   border: `1px solid ${theme.palette.divider}`,
   boxShadow: "none",
+  cursor: "pointer",
+  transition: "box-shadow 150ms ease, border-color 150ms ease",
+  "&:hover": {
+    boxShadow: theme.shadows[2],
+    borderColor: theme.palette.primary.light,
+  },
 }));
 
 export const EmptyBox = styled(Box)(({ theme }) => ({

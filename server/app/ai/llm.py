@@ -143,6 +143,90 @@ def generate_from_prompt(teacher_prompt: str) -> str:
     return (resp.text or "").strip()
 
 
+def generate_student_summary(
+    session_reviews: list[tuple[str, str]],  # (conversation_name, ai_review_text)
+    concept_mastery: dict[str, dict],
+    total_turns: int,
+) -> str:
+    """Generate a Hebrew teacher-facing summary focused on completed session reviews."""
+    if not session_reviews and not concept_mastery:
+        return "התלמיד טרם הגיש משימות ואין נתוני תרגול עדיין."
+
+    # Build completed-session reviews block
+    reviews_block = ""
+    if session_reviews:
+        parts = []
+        for name, review in session_reviews:
+            if review:
+                parts.append(f"שם המשימה: {name}\nסיכום AI: {review}")
+            else:
+                parts.append(f"שם המשימה: {name}\n(הוגש ללא סיכום)")
+        reviews_block = "\n\n".join(parts)
+
+    mastery_lines = []
+    for concept, data in concept_mastery.items():
+        level = data.get("mastery_level", "unseen")
+        attempts = data.get("attempts", 0)
+        correct = data.get("correct", 0)
+        he_name = data.get("he_name", concept)
+        level_he = {
+            "unseen": "לא נלמד",
+            "struggling": "מתקשה",
+            "developing": "בהתפתחות",
+            "proficient": "מיומן",
+            "mastered": "שליט",
+        }.get(level, level)
+        mastery_lines.append(f"- {he_name}: {level_he}, {correct}/{attempts} נכון")
+
+    mastery_block = "\n".join(mastery_lines) or "(אין נתוני שליטה עדיין)"
+
+    prompt_parts = [
+        "אתה עוזר מורה המסכם את ביצועי תלמיד חטיבת ביניים עבור המורה.\n",
+        f"סה\"כ תורות תרגול: {total_turns}\n",
+    ]
+    if reviews_block:
+        prompt_parts.append(
+            f"משימות שהוגשו ({len(session_reviews)}):\n{reviews_block}\n"
+        )
+    else:
+        prompt_parts.append("המתלמיד טרם הגיש משימות.\n")
+
+    prompt_parts += [
+        f"שליטה בנושאים:\n{mastery_block}\n\n",
+        "בהתבסס בעיקר על סיכומי המשימות שהוגשו, כתוב סיכום בעברית (3–4 משפטים) עבור המורה:\n"
+        "1. במה התלמיד מצליח\n"
+        "2. במה התלמיד מתקשה\n"
+        "3. המלצה אחת מעשית למורה\n"
+        "היה ספציפי ובונה.",
+    ]
+
+    resp = _get_client().models.generate_content(
+        model=MODEL,
+        contents=["".join(prompt_parts)],
+        config=types.GenerateContentConfig(max_output_tokens=400),
+    )
+    return (resp.text or "").strip()
+
+
+def generate_conversation_review(conversation_name: str, dialogue: str) -> str:
+    """Generate a Hebrew end-of-session review addressed directly to the student."""
+    resp = _get_client().models.generate_content(
+        model=MODEL,
+        contents=[
+            "אתה מורה מתמטיקה שמסכם שיחת תרגול עם תלמיד חטיבת ביניים ישראלי.\n\n"
+            f"נושא השיחה: {conversation_name}\n\n"
+            f"תמליל השיחה:\n{dialogue}\n\n"
+            "כתוב סיכום בעברית (3–4 משפטים) המופנה ישירות לתלמיד שמציין:\n"
+            "1. מה עשית טוב בשיחה הזו\n"
+            "2. מה כדאי לחזק או לתרגל עוד\n"
+            "3. עידוד קצר להמשך\n"
+            "דבר בגוף שני יחיד, בגובה העיניים, בצורה חיובית ובונה."
+        ],
+        config=types.GenerateContentConfig(max_output_tokens=300),
+    )
+    return (resp.text or "").strip()
+
+
 def summarize(prev_summary: str, latest_exchange: str) -> str:
     """Compact the running conversation memory after each turn (context.json)."""
     resp = _get_client().models.generate_content(

@@ -110,6 +110,49 @@ export async function removeStudentFromTeacher(
   return data;
 }
 
+export interface StudentOverviewStats {
+  total_conversations: number;
+  assigned_count: number;
+  practice_count: number;
+  done_count: number;
+  total_turns: number;
+}
+
+export interface ConversationEntry {
+  id: string;
+  name: string;
+  cover_image_url?: string | null;
+  assigned_by?: string | null;
+  status?: string | null;
+}
+
+export interface StudentOverview {
+  student_id: string;
+  username?: string | null;
+  conversations: ConversationEntry[];
+  stats: StudentOverviewStats;
+}
+
+export async function getStudentOverview(
+  teacherId: string,
+  studentId: string,
+): Promise<StudentOverview> {
+  const { data } = await api.get<StudentOverview>(
+    `/teachers/${teacherId}/students/${studentId}/overview`,
+  );
+  return data;
+}
+
+export async function getStudentAiSummary(
+  teacherId: string,
+  studentId: string,
+): Promise<string> {
+  const { data } = await api.get<{ summary: string }>(
+    `/teachers/${teacherId}/students/${studentId}/ai-summary`,
+  );
+  return data.summary;
+}
+
 export async function generateQuestion(
   teacherId: string,
   prompt: string,
@@ -156,6 +199,7 @@ interface ConversationSummary {
   name: string;
   cover_image_url?: string | null;
   assigned_by?: string | null;
+  status?: string | null;
 }
 interface AiFeedback {
   reply?: string;
@@ -178,6 +222,7 @@ interface ConversationHistory {
   conversation_id: string;
   conversation_name: string;
   history: TurnHistoryItem[];
+  status?: string | null;
 }
 
 // ---------- helpers ----------
@@ -249,7 +294,7 @@ function historyToHomework(h: ConversationHistory): Homework {
     id: h.conversation_id,
     title: h.conversation_name,
     subject: "Math",
-    status: "reviewing",
+    status: (h.status === "completed" ? "completed" : "reviewing") as HomeworkStatus,
     coverImage: allImages[0],
     images: allImages,
     messages,
@@ -316,7 +361,7 @@ export async function listHomeworks(): Promise<Homework[]> {
     id: c.id,
     title: c.name,
     subject: "Math",
-    status: "reviewing" as HomeworkStatus,
+    status: (c.status === "completed" ? "completed" : "reviewing") as HomeworkStatus,
     coverImage: c.cover_image_url ?? undefined,
     images: [],
     messages: [],
@@ -326,8 +371,18 @@ export async function listHomeworks(): Promise<Homework[]> {
   }));
 }
 
-export async function getHomework(id: string): Promise<Homework | null> {
+export async function submitConversation(
+  conversationId: string,
+): Promise<{ review: string; status: string }> {
   const sid = studentId();
+  const { data } = await api.post<{ review: string; status: string }>(
+    `/students/${sid}/conversations/${conversationId}/submit`,
+  );
+  return data;
+}
+
+export async function getHomework(id: string, asStudentId?: string): Promise<Homework | null> {
+  const sid = asStudentId ?? studentId();
   try {
     const { data } = await api.get<ConversationHistory>(`/students/${sid}/conversations/${id}`);
     return historyToHomework(data);

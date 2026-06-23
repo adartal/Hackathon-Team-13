@@ -68,14 +68,43 @@ export const SummaryLabel = styled(Box)(({ theme }) => ({
   fontSize: "0.75rem",
   textTransform: "uppercase",
   letterSpacing: 0.4,
-  marginBottom: theme.spacing(1),
+  marginBottom: theme.spacing(1.5),
 }));
 
-export const SummaryText = styled("p")(({ theme }) => ({
-  margin: 0,
-  fontSize: "0.9rem",
-  lineHeight: 1.6,
-  color: theme.palette.text.primary,
+export const StatsRow = styled(Box)(({ theme }) => ({
+  display: "grid",
+  gridTemplateColumns: "repeat(3, 1fr)",
+  gap: theme.spacing(1.5),
+}));
+
+export const StatBox = styled(Box, {
+  shouldForwardProp: (p) => p !== "done",
+})<{ done?: boolean }>(({ theme, done }) => ({
+  textAlign: "center",
+  padding: theme.spacing(1.5),
+  borderRadius: 14,
+  backgroundColor: done
+    ? alpha(theme.palette.success.main, 0.08)
+    : alpha(theme.palette.primary.main, 0.06),
+  border: `1px solid ${done
+    ? alpha(theme.palette.success.main, 0.25)
+    : alpha(theme.palette.primary.main, 0.15)}`,
+}));
+
+export const StatValue = styled("div", {
+  shouldForwardProp: (p) => p !== "done",
+})<{ done?: boolean }>(({ theme, done }) => ({
+  fontWeight: 700,
+  fontSize: "1.6rem",
+  color: done ? theme.palette.success.main : theme.palette.primary.main,
+  lineHeight: 1,
+}));
+
+export const StatLabel = styled("div")(({ theme }) => ({
+  fontSize: "0.72rem",
+  color: theme.palette.text.secondary,
+  marginTop: 4,
+  fontWeight: 500,
 }));
 
 export const SectionTitle = styled(Box)(({ theme }) => ({
@@ -87,53 +116,40 @@ export const SectionTitle = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(1.5),
 }));
 
-export const TldrList = styled(Box)(({ theme }) => ({
+export const ConvoList = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   gap: theme.spacing(1),
 }));
 
-const TONE_COLORS = {
-  positive: { main: "#16a34a", bg: "rgba(22, 163, 74, 0.08)", border: "rgba(22, 163, 74, 0.25)" },
-  negative: { main: "#dc2626", bg: "rgba(220, 38, 38, 0.08)", border: "rgba(220, 38, 38, 0.25)" },
-} as const;
-
-export const TldrRow = styled(Box, {
-  shouldForwardProp: (p) => p !== "tone",
-})<{ tone: "positive" | "negative" }>(({ tone }) => ({
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 10,
-  padding: "10px 14px",
-  borderRadius: 14,
-  backgroundColor: TONE_COLORS[tone].bg,
-  border: `1px solid ${TONE_COLORS[tone].border}`,
-}));
-
-export const TldrIcon = styled(Box, {
-  shouldForwardProp: (p) => p !== "tone",
-})<{ tone: "positive" | "negative" }>(({ tone }) => ({
-  color: TONE_COLORS[tone].main,
+export const ConvoItem = styled(Paper)(({ theme }) => ({
   display: "flex",
   alignItems: "center",
-  marginTop: 1,
-  flexShrink: 0,
+  gap: theme.spacing(1.5),
+  padding: theme.spacing(1.5, 2),
+  borderRadius: 14,
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow: "none",
+  cursor: "pointer",
+  transition: "box-shadow 150ms ease, border-color 150ms ease",
+  "&:hover": {
+    boxShadow: theme.shadows[2],
+    borderColor: theme.palette.primary.light,
+  },
 }));
 
-export const TldrText = styled("span", {
-  shouldForwardProp: (p) => p !== "tone",
-})<{ tone: "positive" | "negative" }>(({ tone }) => ({
-  fontSize: "0.85rem",
-  fontWeight: 500,
-  lineHeight: 1.4,
-  color: TONE_COLORS[tone].main,
+export const AiSummaryText = styled("p")(({ theme }) => ({
+  margin: 0,
+  fontSize: "0.9rem",
+  lineHeight: 1.6,
+  color: theme.palette.text.primary,
 }));
 
 export const EmptyTldr = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(2),
+  padding: theme.spacing(3),
   borderRadius: 14,
   border: `1px dashed ${theme.palette.divider}`,
   textAlign: "center",
-  fontSize: "0.8rem",
+  fontSize: "0.85rem",
   color: theme.palette.text.secondary,
 }));

@@ -10,6 +10,7 @@ class ConversationSummary(BaseModel):
     name: str
     cover_image_url: str | None = None
     assigned_by: str | None = None  # teacher_id when teacher-assigned
+    status: str = "reviewing"  # reviewing | completed
 
 
 class AssignQuestionResponse(BaseModel):
@@ -23,6 +24,25 @@ class GenerateQuestionRequest(BaseModel):
 
 class GenerateQuestionResponse(BaseModel):
     problem: str
+
+
+class StudentSummaryResponse(BaseModel):
+    summary: str
+
+
+class StudentOverviewStats(BaseModel):
+    total_conversations: int
+    assigned_count: int
+    practice_count: int
+    done_count: int
+    total_turns: int
+
+
+class StudentOverviewResponse(BaseModel):
+    student_id: str
+    username: str | None = None
+    conversations: list[ConversationSummary]
+    stats: StudentOverviewStats
 
 
 class AssignRequest(BaseModel):
@@ -66,6 +86,12 @@ class ConversationHistory(BaseModel):
     conversation_id: str
     conversation_name: str
     history: list[TurnHistoryItem]
+    status: str = "reviewing"  # reviewing | completed
+
+
+class SubmitConversationResponse(BaseModel):
+    review: str
+    status: str = "completed"
 
 
 class NextStepResponse(BaseModel):

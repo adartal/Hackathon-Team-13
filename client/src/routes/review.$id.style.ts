@@ -181,3 +181,26 @@ export const MessageField = styled(TextField)({
 });
 
 export const HiddenInput = styled("input")({ display: "none" });
+
+export const SubmitBar = styled(Box)(({ theme }) => ({
+  borderTop: `1px solid ${theme.palette.divider}`,
+  padding: theme.spacing(1, 1.5, 0),
+  maxWidth: 672,
+  margin: "0 auto",
+  width: "100%",
+  display: "flex",
+  justifyContent: "flex-end",
+}));
+
+export const CompletedBanner = styled(Box)(({ theme }) => ({
+  borderTop: `1px solid ${theme.palette.divider}`,
+  backgroundColor: theme.palette.background.default,
+  padding: theme.spacing(2, 2),
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: theme.spacing(1),
+  fontSize: "0.85rem",
+  color: theme.palette.success.main,
+  fontWeight: 600,
+}));

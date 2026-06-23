@@ -3,12 +3,13 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { useEffect, useRef, useState } from "react";
-import { Dialog, IconButton } from "@mui/material";
+import { Button, CircularProgress, Dialog, IconButton } from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SendIcon from "@mui/icons-material/Send";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import { appendMessage, getHomework, getUser, type Homework, type ChatMessage } from "@/lib/api";
+import { appendMessage, getHomework, submitConversation, getUser, type Homework, type ChatMessage } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
 import { filesToDataUrls } from "@/lib/file-utils";
 import {
@@ -32,20 +33,28 @@ import {
   IconBtn,
   MessageField,
   HiddenInput,
+  SubmitBar,
+  CompletedBanner,
 } from "./review.$id.style";
 
 export const Route = createFileRoute("/review/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    studentId: typeof search.studentId === "string" ? search.studentId : undefined,
+  }),
   head: () => ({ meta: [{ title: "Review — Hintly" }] }),
   component: ReviewPage,
 });
 
 function ReviewPage() {
   const { id } = Route.useParams();
+  const { studentId: viewAsStudentId } = Route.useSearch();
   const navigate = useNavigate();
+  const isTeacherView = Boolean(viewAsStudentId);
   const [hw, setHw] = useState<Homework | null>(null);
   const [text, setText] = useState("");
   const [pendingImages, setPendingImages] = useState<string[]>([]);
   const [tutorTyping, setTutorTyping] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,25 +66,25 @@ function ReviewPage() {
     }
     let cancelled = false;
     const load = () =>
-      getHomework(id).then((h) => {
+      getHomework(id, viewAsStudentId).then((h) => {
         if (cancelled) return;
         if (!h) {
-          navigate({ to: "/home" });
+          navigate({ to: isTeacherView ? "/teacher" : "/home" });
           return;
         }
         setHw(h);
-        setTutorTyping(h.messages.at(-1)?.role === "student");
+        setTutorTyping(!isTeacherView && h.messages.at(-1)?.role === "student");
       });
     load();
     const onUpdate = (e: Event) => {
-      if ((e as CustomEvent).detail === id) load();
+      if (!isTeacherView && (e as CustomEvent).detail === id) load();
     };
     window.addEventListener("hw:update", onUpdate);
     return () => {
       cancelled = true;
       window.removeEventListener("hw:update", onUpdate);
     };
-  }, [id, navigate]);
+  }, [id, viewAsStudentId, isTeacherView, navigate]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -125,26 +134,44 @@ function ReviewPage() {
     }
   }
 
+  async function handleSubmit() {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await submitConversation(id);
+      const fresh = await getHomework(id);
+      if (fresh) setHw(fresh);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const backTo = isTeacherView ? `/students/${viewAsStudentId}` : "/home";
+
   if (!hw) {
     return (
       <PageRoot>
-        <AppHeader title="Loading…" back="/home" />
+        <AppHeader title="Loading…" back={backTo} />
       </PageRoot>
     );
   }
 
   return (
     <PageRoot>
-      <AppHeader title={hw.title} back="/home" />
+      <AppHeader title={hw.title} back={backTo} />
 
       <ScrollArea ref={scrollRef}>
         <ScrollInner>
           <InfoBanner>
             <AutoAwesomeIcon sx={{ fontSize: 16, mt: "2px", flexShrink: 0 }} />
-            <span>
-              Hintly is reviewing your work. Ask questions, share more photos, or walk through your
-              steps.
-            </span>
+            {isTeacherView ? (
+              <span>Teacher view — read only. You are viewing this student's conversation.</span>
+            ) : (
+              <span>
+                Hintly is reviewing your work. Ask questions, share more photos, or walk through your
+                steps.
+              </span>
+            )}
           </InfoBanner>
 
           {hw.messages.map((m) => (
@@ -155,81 +182,103 @@ function ReviewPage() {
         </ScrollInner>
       </ScrollArea>
 
-      <Composer>
-        <ComposerInner>
-          {pendingImages.length > 0 ? (
-            <PendingStrip>
-              {pendingImages.map((src, i) => (
-                <PendingThumb key={i}>
-                  <PendingImg src={src} alt="" />
-                  <PendingRemove
-                    aria-label="Remove"
-                    onClick={() => setPendingImages((p) => p.filter((_, j) => j !== i))}
-                  >
-                    ×
-                  </PendingRemove>
-                </PendingThumb>
-              ))}
-            </PendingStrip>
-          ) : null}
+      {!isTeacherView && (
+        hw?.status === "completed" ? (
+          <CompletedBanner>
+            <CheckCircleIcon sx={{ fontSize: 20 }} />
+            <span>המשימה הוגשה — השיחה הסתיימה</span>
+          </CompletedBanner>
+        ) : (
+          <Composer>
+            <SubmitBar>
+              <Button
+                size="small"
+                variant="outlined"
+                color="success"
+                startIcon={submitting ? <CircularProgress size={14} color="inherit" /> : <CheckCircleIcon />}
+                disabled={submitting}
+                onClick={handleSubmit}
+                sx={{ fontSize: "0.75rem", borderRadius: 5, mb: 0.5 }}
+              >
+                {submitting ? "מגיש…" : "הגש משימה"}
+              </Button>
+            </SubmitBar>
+            <ComposerInner>
+              {pendingImages.length > 0 ? (
+                <PendingStrip>
+                  {pendingImages.map((src, i) => (
+                    <PendingThumb key={i}>
+                      <PendingImg src={src} alt="" />
+                      <PendingRemove
+                        aria-label="Remove"
+                        onClick={() => setPendingImages((p) => p.filter((_, j) => j !== i))}
+                      >
+                        ×
+                      </PendingRemove>
+                    </PendingThumb>
+                  ))}
+                </PendingStrip>
+              ) : null}
 
-          <ComposerRow>
-            <IconBtn aria-label="Take photo" onClick={() => cameraRef.current?.click()}>
-              <CameraAltIcon />
-            </IconBtn>
-            <IconBtn aria-label="Attach image" onClick={() => galleryRef.current?.click()}>
-              <AddPhotoAlternateIcon />
-            </IconBtn>
+              <ComposerRow>
+                <IconBtn aria-label="Take photo" onClick={() => cameraRef.current?.click()}>
+                  <CameraAltIcon />
+                </IconBtn>
+                <IconBtn aria-label="Attach image" onClick={() => galleryRef.current?.click()}>
+                  <AddPhotoAlternateIcon />
+                </IconBtn>
 
-            <MessageField
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              placeholder="Ask Hintly anything…"
-              multiline
-              maxRows={5}
-            />
+                <MessageField
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  placeholder="שאל את Hintly…"
+                  multiline
+                  maxRows={5}
+                />
 
-            <IconButton
-              color="primary"
-              aria-label="Send"
-              onClick={send}
-              disabled={!text.trim() && pendingImages.length === 0}
-              sx={{
-                width: 40,
-                height: 40,
-                bgcolor: "primary.main",
-                color: "primary.contrastText",
-                "&:hover": { bgcolor: "primary.dark" },
-                "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
-              }}
-            >
-              <SendIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </ComposerRow>
+                <IconButton
+                  color="primary"
+                  aria-label="Send"
+                  onClick={send}
+                  disabled={!text.trim() && pendingImages.length === 0}
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    "&:hover": { bgcolor: "primary.dark" },
+                    "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
+                  }}
+                >
+                  <SendIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </ComposerRow>
 
-          <HiddenInput
-            ref={cameraRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-          <HiddenInput
-            ref={galleryRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-        </ComposerInner>
-      </Composer>
+              <HiddenInput
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+              <HiddenInput
+                ref={galleryRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+            </ComposerInner>
+          </Composer>
+        )
+      )}
     </PageRoot>
   );
 }
